@@ -27,10 +27,18 @@ app.add_middleware(
 )
 
 # Load model only once per container
-try:
-    model = YOLO('yolov8n.pt')
-except:
-    model = None
+model = None
+
+def get_model():
+    """Lazy load model on first use"""
+    global model
+    if model is None:
+        try:
+            model = YOLO('yolov8n.pt')
+        except Exception as e:
+            print(f"[Model] Failed to load: {e}")
+            return None
+    return model
 
 # In-memory cache (resets on cold start, but that's ok)
 _cache = {}
@@ -159,20 +167,21 @@ def health():
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     """Upload image → count, weight, crop, prices."""
-    if not model:
+    model_instance = get_model()
+    if not model_instance:
         return {"error": "Model not loaded", "status": "Error"}
     
     try:
         contents = await file.read()
         image = Image.open(io.BytesIO(contents))
-        results = model.predict(image, conf=0.25)
+        results = model_instance.predict(image, conf=0.25)
         
         count = len(results[0].boxes) if results else 0
         detected_crop = "fruit"
         
         if count > 0:
             class_id = int(results[0].boxes.cls[0].item())
-            detected_crop = model.names[class_id].lower()
+            detected_crop = model_instance.names[class_id].lower()
         
         count_display = "0" if count == 0 else f"{max(1, count - 1)} – {count + 1}"
         weight = estimate_weight(detected_crop, count)
