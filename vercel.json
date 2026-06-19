@@ -1,8 +1,8 @@
 {
   "buildCommand": "pip install -r requirements.txt",
-  "devCommand": "uvicorn vercel.api.index:app --reload",
+  "devCommand": "uvicorn api.index:app --reload",
   "functions": {
-    "vercel/api/index.py": {
+    "api/index.py": {
       "memory": 2048,
       "maxDuration": 60
     }
